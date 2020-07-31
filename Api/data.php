@@ -10,12 +10,49 @@ $user = $_SESSION['user_id'];
 $sql = 0;
 
 include("../connect.php");
-if(isset($_POST['hae_kommentit'])){
+if(isset($_POST['hae_kommentit'])){ /* <--- issetit puuttuu */
 	$kokous = (int)$_POST['kokous_id'];
-	$thread = $_POST['thread'];
-	$kohta = $_POST['kohta'];
-	$sql = "CALL esityskohta_kommentit('$kohta','$thread','$user','$kokous')";
+	$thread = (int)$_POST['thread'];
+	$kohta = (int) $_POST['kohta'];
+	
+	$tyyppi = 0;
+	switch(strip_tags($_POST['hae_kommentit'])){
+		case "mielipide":
+			$tyyppi=1;
+		break;
+		case "valinta":
+			$tyyppi=2;
+		break;
+		case "perustelu":
+			$tyyppi=3;
+		break;
+	}
+	$sql = "CALL esityskohta_kommentit('$kohta','$thread','$user','$kokous','$tyyppi')";
+	
 }
+else if(isset($_POST['kannata']) && isset($_POST['kohta_id']) && isset($_POST['tyyppi']) && isset($_POST['kokous_id'])){
+	$kohta = (int)$_POST['kohta_id'];
+	$kokous = (int)$_POST['kokous_id'];
+	$tyyppi = (int)$_POST['tyyppi'];
+	$xid = (int) $_POST['kannata'];
+	$sql = "call esityskohta_like('$user','$tyyppi','$xid','$kokous');";
+	
+	
+	} 
+else if(isset($_POST['hae_liket']) && isset($_POST['kohta_id']) && isset($_POST['tyyppi'])){
+	$kohta = (int)$_POST['kohta_id'];
+	$tyyppi = (int)$_POST['tyyppi'];
+	$xid = (int) $_POST['hae_liket'];
+	$sql = "call esityskohta_liket('$user','$tyyppi','$xid');";
+
+	$result = $con -> query($sql);
+ 	if($row = mysqli_fetch_assoc($result)){
+		echo "[".$row['maara'].",".$row['mina']."]";
+	 }	
+	 exit(0);
+	
+}
+
 
 else if(isset($_POST['otsakkeet'])){
 	$kokous = (int)$_POST['otsakkeet'];
@@ -32,7 +69,6 @@ else if(isset($_POST['otsakkeet'])){
 }
 
 else if(isset($_POST['poista_kohta']) && isset($_POST['kokous_id'])) {
-	
 	$kokous = (int)$_POST['kokous_id'];
 	$kohta = (int)$_POST['poista_kohta'];
 	$sql = "CALL esityskohta_poista('$kokous','$user','$kohta')";
@@ -63,9 +99,6 @@ else if(isset($_POST['paatos_valitse'])&& isset($_POST['kohta']) && isset($_POST
 	
 }
 
-
-
-
 else if(isset($_POST['check_remove']) && isset($_POST['kohta']) && isset($_POST['kokous_id'])){
 	$kokous = (int)$_POST['kokous_id'];
 	$kohta = (int)$_POST['kohta'];
@@ -75,22 +108,12 @@ else if(isset($_POST['check_remove']) && isset($_POST['kohta']) && isset($_POST[
 	exit(0);
 }
 
-			
-
-
 else if(isset($_POST['check_uusi']) && isset($_POST['kohta']) && isset($_POST['kokous_id'])){
 	$kokous = (int)$_POST['kokous_id'];
 	$data = strip_tags($_POST['check_uusi']);
 	$kohta = (int)$_POST['kohta'];
-	
 	$sql = "CALL esityskohta_valinnat_lisaa('$kohta','$kokous','$user','$data')";
-/*	$file = fopen("mitaihmetta","w");
-	echo fwrite($file,$sql);
-	fclose($file);*/
-
 	$result = $con -> query($sql);
-	/*echo $sql;
-	*/
 	exit(0);
 }
 
@@ -104,6 +127,8 @@ else if(isset($_POST['avaakohta']) && isset($_POST['kokous_id'])){
 	$sql.= "CALL esityskohta_valinnat('$kohta','$kokous',$user);";
 	$sql.= "CALL valinnat('$kohta','$kokous','$user');";
 	$sql.= "CALL esityskohta_mielipiteet('$kohta','$kokous','$user');";
+	$sql.= "CALL esityskohta_perustelut('$kohta','$kokous','$user');";
+
 	$multi_result = $con -> multi_query($sql);
 	$i=0;
 	if ($multi_result) {
@@ -157,16 +182,34 @@ else if(isset($_POST['save']) && isset($_POST['thread']) && isset($_POST['param'
 				}
 
 			break;
+		case "perustelu":
+			if (isset($_POST['draft'])){
+				$draft = $_POST['draft'];
+				$sql = "CALL esityskohta_perustelu_lisaa('$kohta','$kokous','$user','$draft','$param')";
+				}
+				
+			break;
 		case "paatos":
 			if (isset($_POST['tila'])){
 				$tila = $_POST['tila'];
 				$sql = "CALL esityskohta_paatos_muuta('$kohta','$kokous','$user','$param','$tila')";} 	
 			break;
 		case "kommentti_mielipide":
-				$sql = "CALL esityskohta_kommentoi_mielipide('$kohta','$kokous','$user','$thread','$param')";
+				$sql = "CALL esityskohta_kommentoi('$kohta','$kokous','$user','$thread','$param',1)";
 				echo $sql;
-
 			break;
+		case "kommentti_valinta":
+			$sql = "CALL esityskohta_kommentoi('$kohta','$kokous','$user','$thread','$param',2)";
+			
+			break;
+		case "kommentti_perustelu":
+				$sql = "CALL esityskohta_kommentoi('$kohta','$kokous','$user','$thread','$param',3)";
+			
+		break;
+		case "flags":
+			$sql = "CALL esityskohta_toggle_flag('$kokous','$kohta','$param','$user')";
+			echo $sql;
+		break;
 			
 	}
 	if ($sql !== 0)
@@ -192,7 +235,7 @@ else if(isset($_POST['Uusi']) && isset($_POST['kokous_id'])){
 } else {
 		if(isset($_POST['kokous_id'])){
 			$kokous = (int)$_POST['kokous_id']; 
-			$sql = "CALL esityskohdat('$kokous'); ";
+			$sql = "CALL esityskohdat('$kokous','$user'); ";
 		} else 
 		{
 			exit();

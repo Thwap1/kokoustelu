@@ -165,7 +165,7 @@ function deleteKokousDraft() {
     if(isset($_POST['kokousid'])) {
         
         $kokousid = (int)$_POST['kokousid'];
-        $sql = "CALL kokous_deletekokousdraft($kokousid,4)"; /* <-- kovakoodattu yhdistysid TODO tarvitaan $_SESSION['yhdistys'] */
+        $sql = "CALL kokous_deletekokousdraft($kokousid)"; /* <-- kovakoodattu yhdistysid TODO tarvitaan $_SESSION['yhdistys'] */
         $response = array("message"=> $sql);
         $yhteys = connect(); 
         if($result = $yhteys->query($sql)) {
@@ -233,7 +233,7 @@ function luoKokous() {  // perustiedot ensiki tauluun, sitten muut updatella id:
         $otsikko = strip_tags($_POST['otsikko']);
         $kokousnro =  (int)$_POST['kokousnro'];
         $startDate = htmlspecialchars(strip_tags($_POST['startDate'])); 
-        $startDate = date('Y-m-d', strtotime($startDate));
+        $startDate = date('Y-m-d', strtotime($startDate. '+ 1 days'));
         $endDate = htmlspecialchars(strip_tags($_POST['endDate'])); 
         $endDate = date('Y-m-d', strtotime($endDate));
         $avoinna = htmlspecialchars(strip_tags($_POST['avoinna'])); 
@@ -244,8 +244,19 @@ function luoKokous() {  // perustiedot ensiki tauluun, sitten muut updatella id:
         $paatosv_muu  = htmlspecialchars(strip_tags($_POST['paatosvaltaisuus']['muu']));
         $valmis = htmlspecialchars(strip_tags($_POST['valmis']));
         if(!$valmis) $valmis="0"; 
-          $sql = "CALL kokous_insert($id_y, $id_k, '$otsikko', $kokousnro, $paatosv_esityslista, $paatosv_aktiivisuus, $paatosv_kesto, '$paatosv_muu', '$startDate', '$endDate',  $avoinna, $valmis)";
-    //   echo $sql; 
+        $today = date('Y-m-d');
+      
+        if($valmis == "1") { 
+         
+            if($today > $startDate || $endDate < $startDate) {
+                $response = array( "message"=>"Tarkasta päivämäärät!");
+                http_response_code(400);
+                echo json_encode($response, JSON_UNESCAPED_UNICODE); 
+                exit(); 
+            }
+        }
+
+        $sql = "CALL kokous_insert($id_y, $id_k, '$otsikko', $kokousnro, $paatosv_esityslista, $paatosv_aktiivisuus, $paatosv_kesto, '$paatosv_muu', '$startDate', '$endDate',  $avoinna, $valmis)";
         $yhteys = connect(); 
         if($result = $yhteys->query($sql)) {
             $row = mysqli_fetch_row($result);
@@ -313,7 +324,13 @@ function vaihdaPvm() {//  body {"call":"vaihdapvm","kokousid":"33","enddate":"20
         $kokousid = (int)$_POST['kokousid']; 
         $endDate = htmlspecialchars(strip_tags($_POST['enddate'])); 
         $endDate = date('Y-m-d', strtotime($endDate));
-
+        $today = date('Y-m-d');
+        if($today > $endDate) {
+            $response = array( "message"=> "Päivämäärän vaihto epäonnistui. Kokouksen päättymispäiväksi ei voi asettaa mennyttä ajankohtaa.");
+            http_response_code(400);
+            echo json_encode($response, JSON_UNESCAPED_UNICODE); 
+            exit(); 
+        }
         $q = "CALL kokous_vaihdapaattymispaiva($kokousid, '$endDate')"; 
         $yhteys = connect(); 
 
