@@ -111,8 +111,8 @@ function getKokous() {
         $startDate = $row['startDate'];
         $pv_kesto = $row['pv_kesto'];
         $erotus = (new DateTime($startDate))->diff(new DateTime($today))->days;
-
-        if($pv_kesto <= $erotus) $pv_kesto_toteutunut = "true"; 
+        
+        if($pv_kesto <= $erotus && $startDate < $today) $pv_kesto_toteutunut = "true"; 
         else $pv_kesto_toteutunut = "false"; 
 
         $row['pv_kesto_toteutunut'] = $pv_kesto_toteutunut;
@@ -276,7 +276,7 @@ function sendKokousInvite() {
     http_response_code(400);
     if(isset($_POST['yhdistys']) && isset($_POST['aihe']) && isset($_POST['viesti']) && isset($_POST["osallistujat"])) {
         $yhdistys = htmlspecialchars(strip_tags($_POST['yhdistys']));
-        $aihe = htmlspecialchars(strip_tags($_POST['aihe']));
+        $aihe = $_POST['aihe'];
         $viesti = $_POST['viesti']; 
     
 
@@ -366,7 +366,8 @@ function paataKokous() {
     http_response_code(400);
     if(isset($_POST['kokousid'])) {
         $kokousid = (int)$_POST['kokousid'];
-        $q = "UPDATE kokous SET loppu = 1 WHERE id = '$kokousid';";
+        /*$q = "UPDATE kokous SET loppu = 1 WHERE id = '$kokousid';";*/
+        $q = "CALL suljekokous('$kokousid')";
         $yhteys = connect(); 
         if($yhteys->query($q)) {
             $response = array( "message"=> "Kokouksen on päätetty.");
